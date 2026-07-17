@@ -1,0 +1,12 @@
+__pycache__
+.coverage
+out
+dist
+*.egg-info
+
+# sphinx build output
+docs/_build
+
+# rust
+/target
+*.so

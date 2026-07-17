@@ -1,0 +1,63 @@
+[project]
+name = "provenny"
+version = "0.1.0"
+description = "Lay out area-proportional euler/venn diagrams for any number of sets"
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = [
+    "venn-diagram",
+    "euler-diagram",
+    "area-proportional",
+    "diagram-layout",
+    "visualization",
+    "numpy",
+]
+dependencies = ["numba>=0.61.2", "numpy>=2.2.6", "scipy>=1.15.3"]
+
+[project.urls]
+homepage = "https://hafaio.github.io/provenny/"
+documentation = "https://hafaio.github.io/provenny/"
+repository = "https://github.com/hafaio/provenny"
+
+[dependency-groups]
+dev = [
+    "hypothesis>=6.135.24",
+    "ipykernel>=6.29.5",
+    "matplotlib>=3.10.0",
+    "myst-parser>=4.0.0",
+    "nbformat>=5.10.4",
+    "plotly>=6.1.2",
+    "pyright>=1.1.402",
+    "pytest>=8.4.1",
+    "pytest-benchmark>=5.2.3",
+    "pytest-cov>=6.2.1",
+    "ruff>=0.12.0",
+    "sphinx>=8.1.3",
+    "sympy>=1.14.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pyright]
+strict = ["provenny", "tests"]
+
+[tool.ruff.lint]
+extend-select = ["I", "D", "A", "B", "W", "PL", "UP", "FIX"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.pytest.ini_options]
+# --benchmark-skip disables the timing tests by default; run them with --benchmark-only
+addopts = "--cov=provenny --cov-report term-missing --benchmark-skip"
+
+[tool.coverage.run]
+source = ["provenny"]
+
+[tool.coverage.report]
+exclude_also = ['@nb\.njit']
+
+[tool.uv]
+keyring-provider = "subprocess"
