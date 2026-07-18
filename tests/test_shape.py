@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from provenny import Ellipse
+from provenny import Bounds, Ellipse
 from provenny._shape import canonicalize
 
 
@@ -44,6 +44,40 @@ def test_ellipse_area() -> None:
     """Ellipse.area is pi * major * minor, matching what its arc boundary encloses."""
     ellipse = Ellipse(np.array([0.5, -0.2, 1.5, 0.7, 0.6]))
     assert np.isclose(ellipse.area, np.pi * 1.5 * 0.7)
+
+
+def test_ellipse_bounds_are_the_tight_axis_extents() -> None:
+    """An axis-aligned ellipse bounds to center +/- its semi-axes; a rotation swaps them."""
+    flat = Ellipse(np.array([0.5, -0.2, 2.0, 1.0, 0.0]))
+    assert np.allclose(flat.bounds, (0.5 - 2.0, -0.2 - 1.0, 0.5 + 2.0, -0.2 + 1.0))
+    upright = Ellipse(np.array([0.0, 0.0, 2.0, 1.0, np.pi / 2.0]))  # major now vertical
+    assert np.allclose(upright.bounds, (-1.0, -2.0, 1.0, 2.0))
+
+
+def test_ellipse_bounds_enclose_the_outline_tightly() -> None:
+    """For any rotation the box contains every boundary point and is touched on all sides."""
+    ellipse = Ellipse(np.array([0.5, -0.3, 2.0, 1.0, 0.7]))
+    points = ellipse.sample(2000)
+    min_x, min_y, max_x, max_y = ellipse.bounds
+    assert points[:, 0].min() >= min_x and points[:, 0].max() <= max_x
+    assert points[:, 1].min() >= min_y and points[:, 1].max() <= max_y
+    assert np.isclose(points[:, 0].min(), min_x, atol=1e-3)
+    assert np.isclose(points[:, 0].max(), max_x, atol=1e-3)
+    assert np.isclose(points[:, 1].min(), min_y, atol=1e-3)
+    assert np.isclose(points[:, 1].max(), max_y, atol=1e-3)
+
+
+def test_bounds_is_a_named_tuple() -> None:
+    """Bounds is a real tuple with names and convenience helpers on top."""
+    box = Ellipse(np.array([0.0, 0.0, 2.0, 1.0, 0.0])).bounds
+    assert isinstance(box, tuple)
+    assert box == (-2.0, -1.0, 2.0, 1.0)  # compares equal to the plain 4-tuple
+    min_x, min_y, max_x, max_y = box  # unpacks
+    assert (min_x, min_y, max_x, max_y) == (box.min_x, box.min_y, box.max_x, box.max_y)
+    assert box[0] == box.min_x  # indexes and names the same slot
+    assert (box.width, box.height, box.center) == (4.0, 2.0, (0.0, 0.0))
+    other = Bounds(1.0, -3.0, 5.0, 0.5)
+    assert box.union(other) == (-2.0, -3.0, 5.0, 1.0)
 
 
 def test_ellipse_array_is_readonly() -> None:

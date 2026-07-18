@@ -126,6 +126,19 @@ def test_arbitrary_hashable_labels(rng: np.random.Generator) -> None:
     assert np.isfinite(both.center).all()
 
 
+def test_diagram_bounds_cover_every_ellipse(rng: np.random.Generator) -> None:
+    """The diagram box is the union of the per-set ellipse boxes."""
+    diagram = proportional_venn(
+        {("A",): np.pi, ("B",): np.pi, ("A", "B"): 0.6}, rng=rng
+    )
+    boxes = [diagram[name].bounds for name in diagram]
+    min_x, min_y, max_x, max_y = diagram.bounds
+    assert min_x == min(box.min_x for box in boxes)
+    assert min_y == min(box.min_y for box in boxes)
+    assert max_x == max(box.max_x for box in boxes)
+    assert max_y == max(box.max_y for box in boxes)
+
+
 def test_diagram_rejects_mismatched_shapes() -> None:
     """A Diagram must carry one canonical ellipse row per name."""
     rows = np.zeros((2, 5))

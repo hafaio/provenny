@@ -13,6 +13,7 @@ from __future__ import annotations
 import math
 from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass, replace
+from typing import NamedTuple
 
 import numpy as np
 
@@ -28,6 +29,55 @@ _CLOSEPOLY = 79
 
 Point = tuple[float, float]
 Cubic = tuple[Point, Point, Point, Point]
+
+
+class Bounds(NamedTuple):
+    """An axis-aligned bounding box; a ``(min_x, min_y, max_x, max_y)`` tuple with names.
+
+    A real :class:`tuple`, so it unpacks, indexes, and compares equal to the plain 4-tuple --
+    the added names and helpers are pure convenience. ``ax.set_xlim(box.min_x, box.max_x)``.
+    """
+
+    min_x: float
+    min_y: float
+    max_x: float
+    max_y: float
+
+    @property
+    def width(self) -> float:
+        """The extent along x, ``max_x - min_x``."""
+        return self.max_x - self.min_x
+
+    @property
+    def height(self) -> float:
+        """The extent along y, ``max_y - min_y``."""
+        return self.max_y - self.min_y
+
+    @property
+    def center(self) -> Point:
+        """The box center ``(x, y)``."""
+        return ((self.min_x + self.max_x) / 2.0, (self.min_y + self.max_y) / 2.0)
+
+    def union(self, other: Bounds) -> Bounds:
+        """Return the smallest box covering both this box and ``other``."""
+        return Bounds(
+            min(self.min_x, other.min_x),
+            min(self.min_y, other.min_y),
+            max(self.max_x, other.max_x),
+            max(self.max_y, other.max_y),
+        )
+
+
+def union_bounds(boxes: Iterable[Bounds]) -> Bounds:
+    """Combine one or more boxes into the smallest box covering all of them."""
+    min_x = min_y = math.inf
+    max_x = max_y = -math.inf
+    for box in boxes:
+        min_x = min(min_x, box.min_x)
+        min_y = min(min_y, box.min_y)
+        max_x = max(max_x, box.max_x)
+        max_y = max(max_y, box.max_y)
+    return Bounds(min_x, min_y, max_x, max_y)
 
 
 def canonicalize(ellipses: F64Array) -> F64Array:
@@ -108,6 +158,19 @@ class Ellipse:
     def area(self) -> float:
         """The enclosed area, ``pi * major * minor``."""
         return math.pi * self.major * self.minor
+
+    @property
+    def bounds(self) -> Bounds:
+        """The axis-aligned bounding box ``(min_x, min_y, max_x, max_y)``."""
+        # the tightest axis extents of a rotated ellipse in closed form
+        center_x, center_y = self.center
+        cos = math.cos(self.angle)
+        sin = math.sin(self.angle)
+        half_x = math.hypot(self.major * cos, self.minor * sin)
+        half_y = math.hypot(self.major * sin, self.minor * cos)
+        return Bounds(
+            center_x - half_x, center_y - half_y, center_x + half_x, center_y + half_y
+        )
 
     def point_at(self, anomaly: float) -> Point:
         """Return the ``(x, y)`` boundary point at eccentric ``anomaly``."""
@@ -270,6 +333,34 @@ def sample_loop(loop: Sequence[Arc], num: int) -> F64Array:
                 arc.ellipse.point_at(arc.start + (arc.end - arc.start) * step / count)
             )
     return np.array(points, dtype="f8")
+
+
+def _arc_bounds(arc: Arc) -> Bounds:
+    """Return the axis-aligned bounding box of a single arc."""
+    ellipse = arc.ellipse
+    points = [ellipse.point_at(arc.start), ellipse.point_at(arc.end)]
+    _, _, major, minor, angle = ellipse.array
+    cos = math.cos(angle)
+    sin = math.sin(angle)
+    # an extremum lies between the endpoints, so track the sweep as a plain [lo, hi] interval
+    lo = min(arc.start, arc.end)
+    hi = max(arc.start, arc.end)
+    # the eccentric anomalies where the ellipse grazes its x- and y-extents; keep those the arc sweeps
+    for extreme in (
+        math.atan2(-minor * sin, major * cos),
+        math.atan2(minor * cos, major * sin),
+    ):
+        for anomaly in (extreme % math.tau, (extreme + math.pi) % math.tau):
+            if lo <= anomaly <= hi or lo <= anomaly + math.tau <= hi:
+                points.append(ellipse.point_at(anomaly))
+    xs = [x for x, _ in points]
+    ys = [y for _, y in points]
+    return Bounds(min(xs), min(ys), max(xs), max(ys))
+
+
+def loops_bounds(loops: Loops) -> Bounds:
+    """Axis-aligned bounding box ``(min_x, min_y, max_x, max_y)`` enclosing the boundary loops."""
+    return union_bounds(_arc_bounds(arc) for loop in loops for arc in loop)
 
 
 def loops_area(loops: Loops) -> float:
