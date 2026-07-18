@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from numpy.typing import NDArray
 
-from provenny import proportional_venn_array
+from provenny import Ellipse, proportional_venn_array
 from provenny._zone import zone
 
 
@@ -101,6 +101,28 @@ def test_zone_center_is_lazy_and_cached() -> None:
     assert both is not None
     first = both.center
     assert both.center is first
+
+
+def test_single_set_zone_bounds_match_the_ellipse() -> None:
+    """A one-set zone is the whole ellipse, so its bounds equal the ellipse's closed form."""
+    row = np.array([0.5, -0.3, 2.0, 1.0, 0.7])
+    whole = zone(row[np.newaxis], np.array([True]))
+    assert whole is not None
+    assert np.allclose(whole.bounds, Ellipse(row).bounds)
+
+
+def test_intersection_bounds_enclose_the_boundary_tightly() -> None:
+    """The lens bounds contain every boundary sample and are touched on all four sides."""
+    both = zone(_two_circles(), np.array([True, True]))
+    assert both is not None
+    points = np.concatenate(both.sample(2000))
+    min_x, min_y, max_x, max_y = both.bounds
+    assert points[:, 0].min() >= min_x and points[:, 0].max() <= max_x
+    assert points[:, 1].min() >= min_y and points[:, 1].max() <= max_y
+    assert np.isclose(points[:, 0].min(), min_x, atol=1e-3)
+    assert np.isclose(points[:, 0].max(), max_x, atol=1e-3)
+    assert np.isclose(points[:, 1].min(), min_y, atol=1e-3)
+    assert np.isclose(points[:, 1].max(), max_y, atol=1e-3)
 
 
 def test_zone_svg_path_is_wellformed() -> None:

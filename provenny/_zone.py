@@ -21,9 +21,11 @@ from ._kernel import collapse_coincident, ellipse_crossings
 from ._region import region_center
 from ._shape import (
     Arc,
+    Bounds,
     Ellipse,
     Point,
     loops_area,
+    loops_bounds,
     loops_matplotlib_path,
     loops_svg_path,
     require_canonical,
@@ -170,6 +172,11 @@ class Zone:
     def area(self) -> float:
         """The exact enclosed area (holes subtracted), via green's theorem on the arcs."""
         return loops_area(self.loops)
+
+    @property
+    def bounds(self) -> Bounds:
+        """The axis-aligned bounding box ``(min_x, min_y, max_x, max_y)`` of the boundary."""
+        return loops_bounds(self.loops)
 
     def svg_path(self) -> str:
         """Return the boundary as an svg ``<path>`` d-string."""

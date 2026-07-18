@@ -12,7 +12,7 @@ import numpy as np
 from scipy import optimize as spo
 
 from ._kernel import area_core, area_grad_core, penalty_core, penalty_grad_core
-from ._shape import Ellipse, canonicalize
+from ._shape import Bounds, Ellipse, canonicalize, union_bounds
 from ._types import BoolArray, F64Array, I64Array
 from ._zone import Zone
 from ._zone import zone as _zone
@@ -822,6 +822,11 @@ class Diagram(Generic[_Name]):
     def __iter__(self) -> Iterator[_Name]:
         """Iterate the set names, in the order of ``names``."""
         return iter(self.names)
+
+    @property
+    def bounds(self) -> Bounds:
+        """The axis-aligned box ``(min_x, min_y, max_x, max_y)`` enclosing every set's ellipse."""
+        return union_bounds(Ellipse(row).bounds for row in self.shapes)
 
     def ellipse(self, name: _Name) -> Ellipse:
         """Return the shape placed for a set name, as an :class:`Ellipse`.
