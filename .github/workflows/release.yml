@@ -94,7 +94,12 @@ jobs:
     needs: [prepare, publish]
     runs-on: ubuntu-latest
     steps:
+      # check out the live branch tip, not the (possibly stale) dispatch SHA, so the
+      # bump commit's parent is current main
       - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
       - name: Install uv
         uses: astral-sh/setup-uv@v8.3.2
         with:
@@ -110,6 +115,9 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add pyproject.toml uv.lock
           git commit -m "v${VERSION}"
+          # rebase onto whatever landed on main since checkout, then tag the final commit,
+          # so a concurrent push can neither reject the branch nor orphan the tag off main
+          git pull --rebase origin main
           git tag -a "v${VERSION}" -m "v${VERSION}"
           git push --follow-tags
       - name: Create GitHub release
