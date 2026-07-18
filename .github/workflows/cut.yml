@@ -37,14 +37,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          current=$(uv version | cut -d' ' -f2)
-          IFS='.' read -r major minor patch <<< "$current"
-          case "${{ inputs.bump }}" in
-            major) major=$((major + 1)); minor=0; patch=0 ;;
-            minor) minor=$((minor + 1)); patch=0 ;;
-            patch) patch=$((patch + 1)) ;;
-          esac
-          version="${major}.${minor}.${patch}"
+          version=$(uv version --bump ${{ inputs.bump }} --dry-run --short)
           uv version "$version" --frozen
           uv lock
           git config user.name "github-actions[bot]"
