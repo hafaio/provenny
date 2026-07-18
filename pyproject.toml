@@ -1,6 +1,6 @@
 [project]
 name = "provenny"
-version = "0.2.0"
+version = "0.2.1"
 description = "Lay out area-proportional euler/venn diagrams for any number of sets"
 readme = "README.md"
 requires-python = ">=3.10"
